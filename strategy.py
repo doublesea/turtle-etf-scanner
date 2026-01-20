@@ -45,18 +45,22 @@ def turtle_strategy(df, short_window=20, long_window=55, short_exit=10, long_exi
 
     return df
 
-def get_current_signals(etf_list, limit=20):
+def get_current_signals(etf_list, limit=20, check_stop_func=None):
     """
-    扫描当前有突破信号的ETF
+    扫描当前有突破信号(买入)和退出信号(卖出)的ETF
     """
     from data_loader import get_etf_hist
     results = []
     
     # 为了演示，我们只扫描前 limit 个
     for index, row in etf_list.head(limit).iterrows():
+        # 检查是否需要停止扫描
+        if check_stop_func and check_stop_func():
+            print("Scan stopped by user.")
+            break
+            
         symbol = row['代码']
         name = row['名称']
-        print(f"Scanning {symbol} {name}...")
         
         df = get_etf_hist(symbol)
         if df.empty or len(df) < 60:
@@ -65,23 +69,34 @@ def get_current_signals(etf_list, limit=20):
         df = turtle_strategy(df)
         last_row = df.iloc[-1]
         
-        signal = "无"
+        signal_name = "无"
+        signal_type = "none"
+        
+        # 判断入场信号 (买入)
         if last_row['signal_long'] == 1:
-            signal = "长期突破(55日)"
+            signal_name = "长期突破(55日)"
+            signal_type = "buy"
         elif last_row['signal_short'] == 1:
-            signal = "短期突破(20日)"
-        elif last_row['signal_long'] == -1:
-            signal = "长期跌破(20日)"
-        elif last_row['signal_short'] == -1:
-            signal = "短期跌破(10日)"
+            signal_name = "短期突破(20日)"
+            signal_type = "buy"
+        
+        # 如果没有入场信号，判断离场信号 (卖出)
+        if signal_type == "none":
+            if last_row['signal_long'] == -1:
+                signal_name = "长期离场(20日)"
+                signal_type = "sell"
+            elif last_row['signal_short'] == -1:
+                signal_name = "短期离场(10日)"
+                signal_type = "sell"
             
-        if signal != "无":
+        if signal_type != "none":
             results.append({
                 'symbol': symbol,
                 'name': name,
                 'price': last_row['close'],
                 'atr': last_row['atr'],
-                'signal': signal,
+                'signal': signal_name,
+                'type': signal_type,
                 'date': last_row['date'].strftime('%Y-%m-%d')
             })
             

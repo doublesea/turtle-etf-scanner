@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     const scanBtn = document.getElementById('scanBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const limitInput = document.getElementById('limitInput');
+    const totalCount = document.getElementById('totalCount');
     const signalList = document.getElementById('signalList');
     const loading = document.getElementById('loading');
     const chartTitle = document.getElementById('chartTitle');
@@ -9,42 +12,88 @@ document.addEventListener('DOMContentLoaded', function() {
     scanSignals();
 
     scanBtn.addEventListener('click', scanSignals);
+    stopBtn.addEventListener('click', stopScan);
 
     function scanSignals() {
         loading.classList.remove('d-none');
-        signalList.innerHTML = '';
+        scanBtn.classList.add('d-none');
+        stopBtn.classList.remove('d-none');
         
-        fetch('/api/scan?limit=100')
-            .then(response => response.json())
+        const buyList = document.getElementById('buyList');
+        const sellList = document.getElementById('sellList');
+        buyList.innerHTML = '';
+        sellList.innerHTML = '';
+        
+        const limit = limitInput.value || 100;
+        
+        fetch(`/api/scan?limit=${limit}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Scan failed');
+                return response.json();
+            })
             .then(data => {
-                loading.classList.add('d-none');
-                if (data.length === 0) {
-                    signalList.innerHTML = '<div class="alert alert-info">今日暂无突破信号</div>';
-                    return;
-                }
+                finishScanning();
                 
-                data.forEach(item => {
-                    const btn = document.createElement('button');
-                    btn.className = 'list-group-item list-group-item-action flex-column align-items-start';
-                    const isBuy = item.signal.includes('突破');
-                    const tagClass = isBuy ? 'signal-buy' : 'signal-sell';
-                    
-                    btn.innerHTML = `
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">${item.name}</h6>
-                            <small>${item.symbol}</small>
-                        </div>
-                        <p class="mb-1">价格: ${item.price} <span class="signal-tag ${tagClass}">${item.signal}</span></p>
-                    `;
-                    btn.onclick = () => loadChart(item.symbol, item.name);
-                    signalList.appendChild(btn);
-                });
+                const buys = data.filter(item => item.type === 'buy');
+                const sells = data.filter(item => item.type === 'sell');
+                
+                totalCount.innerText = `买入: ${buys.length} | 卖出: ${sells.length}`;
+                
+                renderList(buys, buyList);
+                renderList(sells, sellList);
                 
                 // 默认加载第一个
                 if (data.length > 0) {
                     loadChart(data[0].symbol, data[0].name);
+                } else {
+                    buyList.innerHTML = '<div class="alert alert-info mt-2">今日暂无信号</div>';
                 }
+            })
+            .catch(err => {
+                console.error(err);
+                finishScanning();
             });
+    }
+
+    function renderList(items, container) {
+        if (items.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted mt-3">暂无信号</div>';
+            return;
+        }
+        
+        const listGroup = document.createElement('div');
+        listGroup.className = 'list-group list-group-flush';
+        
+        items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'list-group-item list-group-item-action flex-column align-items-start px-2';
+            const tagClass = item.type === 'buy' ? 'signal-buy' : 'signal-sell';
+            
+            btn.innerHTML = `
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1" style="font-size: 0.9rem;">${item.name}</h6>
+                    <small style="font-size: 0.75rem;">${item.symbol}</small>
+                </div>
+                <p class="mb-1" style="font-size: 0.8rem;">价格: ${item.price} <span class="signal-tag ${tagClass}">${item.signal}</span></p>
+            `;
+            btn.onclick = () => loadChart(item.symbol, item.name);
+            listGroup.appendChild(btn);
+        });
+        container.appendChild(listGroup);
+    }
+
+    function stopScan() {
+        fetch('/api/stop_scan', { method: 'POST' })
+            .then(() => {
+                stopBtn.innerText = '停止中...';
+            });
+    }
+
+    function finishScanning() {
+        loading.classList.add('d-none');
+        scanBtn.classList.remove('d-none');
+        stopBtn.classList.add('d-none');
+        stopBtn.innerText = '停止';
     }
 
     function loadChart(symbol, name) {

@@ -7,6 +7,12 @@ import pandas as pd
 app = Flask(__name__)
 CORS(app)
 
+# 用于控制扫描停止的全局变量
+scanning_state = {
+    "stop": False,
+    "is_running": False
+}
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -18,10 +24,30 @@ def get_etf_list():
 
 @app.route('/api/scan')
 def scan_etfs():
+    if scanning_state["is_running"]:
+        return jsonify({"error": "Scan already in progress"}), 400
+    
     limit = request.args.get('limit', default=50, type=int)
     etf_list = data_loader.get_etf_list()
-    signals = strategy.get_current_signals(etf_list, limit=limit)
+    
+    scanning_state["stop"] = False
+    scanning_state["is_running"] = True
+    
+    try:
+        # 定义一个检查停止信号的函数
+        def check_stop():
+            return scanning_state["stop"]
+            
+        signals = strategy.get_current_signals(etf_list, limit=limit, check_stop_func=check_stop)
+    finally:
+        scanning_state["is_running"] = False
+        
     return jsonify(signals)
+
+@app.route('/api/stop_scan', methods=['POST'])
+def stop_scan():
+    scanning_state["stop"] = True
+    return jsonify({"status": "Stopping..."})
 
 @app.route('/api/etf_detail/<symbol>')
 def get_etf_detail(symbol):
@@ -54,4 +80,4 @@ def get_etf_detail(symbol):
     })
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=False, port=5000)

@@ -27,13 +27,31 @@
             <div class="col-md-3">
                 <div class="sidebar">
                     <h5>今日突破信号</h5>
-                    <button id="scanBtn" class="btn btn-primary btn-sm mb-3">重新扫描</button>
+                    <div class="mb-3">
+                        <label for="limitInput" class="form-label small">扫描数量:</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" id="limitInput" class="form-control" value="100" min="10" max="1000">
+                            <button id="scanBtn" class="btn btn-primary btn-sm">重新扫描</button>
+                            <button id="stopBtn" class="btn btn-danger btn-sm d-none">停止</button>
+                        </div>
+                        <div id="totalCount" class="text-muted small mt-1"></div>
+                    </div>
                     <div id="loading" class="text-center d-none">
                         <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                         <span class="ms-2">扫描中...</span>
                     </div>
-                    <div id="signalList" class="list-group">
-                        <!-- 信号列表将在这里动态生成 -->
+
+                    <ul class="nav nav-tabs mb-2" id="signalTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active p-1" id="buy-tab" data-bs-toggle="tab" data-bs-target="#buyList" type="button" style="font-size: 0.85rem;">买入信号</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link p-1" id="sell-tab" data-bs-toggle="tab" data-bs-target="#sellList" type="button" style="font-size: 0.85rem;">卖出信号</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="signalTabContent">
+                        <div class="tab-pane fade show active" id="buyList" role="tabpanel"></div>
+                        <div class="tab-pane fade" id="sellList" role="tabpanel"></div>
                     </div>
                 </div>
             </div>

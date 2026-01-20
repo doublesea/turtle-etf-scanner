@@ -3,13 +3,21 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 def get_etf_list():
-    """获取所有A股ETF基金列表"""
+    """获取所有A股ETF基金列表 (从东财获取更全的数据)"""
     try:
-        etf_list = ak.fund_etf_category_sina(symbol="ETF基金")
+        # 使用 fund_etf_spot_em 获取实时行情列表，包含了绝大多数 A 股 ETF
+        etf_list = ak.fund_etf_spot_em()
+        # 统一列名
         return etf_list[['代码', '名称']]
     except Exception as e:
-        print(f"Error fetching ETF list: {e}")
-        return pd.DataFrame()
+        print(f"Error fetching ETF list from EM: {e}")
+        try:
+            # 备用方案：新浪
+            etf_list = ak.fund_etf_category_sina(symbol="ETF基金")
+            return etf_list[['代码', '名称']]
+        except Exception as backup_e:
+            print(f"Error fetching ETF list from Sina: {backup_e}")
+            return pd.DataFrame()
 
 def get_etf_hist(symbol, start_date=None, end_date=None):
     """获取指定ETF的历史日线数据"""
