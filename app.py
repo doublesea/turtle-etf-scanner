@@ -7,15 +7,28 @@ import pandas as pd
 app = Flask(__name__)
 CORS(app)
 
-# 用于控制扫描停止的全局变量
+# 用于控制扫描停止和进度的全局变量
 scanning_state = {
     "stop": False,
-    "is_running": False
+    "is_running": False,
+    "current": 0,
+    "total": 0,
+    "current_name": ""
 }
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/scan_status')
+def scan_status():
+    return jsonify({
+        "is_running": scanning_state["is_running"],
+        "current": scanning_state["current"],
+        "total": scanning_state["total"],
+        "name": scanning_state["current_name"],
+        "percent": round((scanning_state["current"] / scanning_state["total"] * 100), 1) if scanning_state["total"] > 0 else 0
+    })
 
 @app.route('/api/etf_list')
 def get_etf_list():
@@ -32,13 +45,23 @@ def scan_etfs():
     
     scanning_state["stop"] = False
     scanning_state["is_running"] = True
+    scanning_state["total"] = min(len(etf_list), limit)
+    scanning_state["current"] = 0
     
     try:
-        # 定义一个检查停止信号的函数
+        def update_progress(current, name):
+            scanning_state["current"] = current
+            scanning_state["current_name"] = name
+
         def check_stop():
             return scanning_state["stop"]
             
-        signals = strategy.get_current_signals(etf_list, limit=limit, check_stop_func=check_stop)
+        signals = strategy.get_current_signals(
+            etf_list, 
+            limit=limit, 
+            check_stop_func=check_stop,
+            progress_callback=update_progress
+        )
     finally:
         scanning_state["is_running"] = False
         

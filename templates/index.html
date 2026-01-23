@@ -37,8 +37,13 @@
                         <div id="totalCount" class="text-muted small mt-1"></div>
                     </div>
                     <div id="loading" class="text-center d-none">
-                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-                        <span class="ms-2">扫描中...</span>
+                        <div class="progress mb-2" style="height: 10px;">
+                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span id="progressText" class="small text-muted">准备中...</span>
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        </div>
                     </div>
 
                     <ul class="nav nav-tabs mb-2" id="signalTab" role="tablist">

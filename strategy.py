@@ -45,15 +45,17 @@ def turtle_strategy(df, short_window=20, long_window=55, short_exit=10, long_exi
 
     return df
 
-def get_current_signals(etf_list, limit=20, check_stop_func=None):
+def get_current_signals(etf_list, limit=20, check_stop_func=None, progress_callback=None):
     """
     扫描当前有突破信号(买入)和退出信号(卖出)的ETF
     """
     from data_loader import get_etf_hist
     results = []
     
+    total_to_scan = min(len(etf_list), limit)
+    
     # 为了演示，我们只扫描前 limit 个
-    for index, row in etf_list.head(limit).iterrows():
+    for i, (index, row) in enumerate(etf_list.head(limit).iterrows()):
         # 检查是否需要停止扫描
         if check_stop_func and check_stop_func():
             print("Scan stopped by user.")
@@ -62,6 +64,10 @@ def get_current_signals(etf_list, limit=20, check_stop_func=None):
         symbol = row['代码']
         name = row['名称']
         
+        # 更新进度
+        if progress_callback:
+            progress_callback(i + 1, name)
+            
         df = get_etf_hist(symbol)
         if df.empty or len(df) < 60:
             continue

@@ -5,8 +5,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const totalCount = document.getElementById('totalCount');
     const signalList = document.getElementById('signalList');
     const loading = document.getElementById('loading');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
     const chartTitle = document.getElementById('chartTitle');
     const mainChart = echarts.init(document.getElementById('mainChart'));
+
+    let progressInterval = null;
 
     // 默认扫描
     scanSignals();
@@ -24,8 +28,14 @@ document.addEventListener('DOMContentLoaded', function() {
         buyList.innerHTML = '';
         sellList.innerHTML = '';
         
+        if (progressBar) progressBar.style.width = '0%';
+        if (progressText) progressText.innerText = '正在获取列表...';
+
         const limit = limitInput.value || 100;
         
+        // 开启进度轮询
+        startProgressPolling();
+
         fetch(`/api/scan?limit=${limit}`)
             .then(response => {
                 if (!response.ok) throw new Error('Scan failed');
@@ -55,6 +65,37 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    function startProgressPolling() {
+        if (progressInterval) clearInterval(progressInterval);
+        progressInterval = setInterval(() => {
+            fetch('/api/scan_status')
+                .then(res => res.json())
+                .then(status => {
+                    if (status.is_running) {
+                        if (progressBar) progressBar.style.width = `${status.percent}%`;
+                        if (progressText) progressText.innerText = `正在扫描: ${status.name} (${status.current}/${status.total})`;
+                    } else {
+                        clearInterval(progressInterval);
+                    }
+                });
+        }, 800);
+    }
+
+    function stopScan() {
+        fetch('/api/stop_scan', { method: 'POST' })
+            .then(() => {
+                stopBtn.innerText = '停止中...';
+            });
+    }
+
+    function finishScanning() {
+        if (progressInterval) clearInterval(progressInterval);
+        loading.classList.add('d-none');
+        scanBtn.classList.remove('d-none');
+        stopBtn.classList.add('d-none');
+        stopBtn.innerText = '停止';
+    }
+
     function renderList(items, container) {
         if (items.length === 0) {
             container.innerHTML = '<div class="text-center text-muted mt-3">暂无信号</div>';
@@ -80,20 +121,6 @@ document.addEventListener('DOMContentLoaded', function() {
             listGroup.appendChild(btn);
         });
         container.appendChild(listGroup);
-    }
-
-    function stopScan() {
-        fetch('/api/stop_scan', { method: 'POST' })
-            .then(() => {
-                stopBtn.innerText = '停止中...';
-            });
-    }
-
-    function finishScanning() {
-        loading.classList.add('d-none');
-        scanBtn.classList.remove('d-none');
-        stopBtn.classList.add('d-none');
-        stopBtn.innerText = '停止';
     }
 
     function loadChart(symbol, name) {
